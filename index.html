@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>เทสเกม</title>
+
+<style>
+  body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #eee;
+  }
+  canvas {
+    background: #caffbf;
+    border-radius: 16px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game" width="800" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// ===== ตัวแปรหลัก =====
+const gravity = 0.8;
+let gameOver = false;
+let score = 0;
+let lives = 3;
+let speedUpTimer = 0;
+
+// ===== ฉากหลัง =====
+let groundX = 0;
+let cloudX = 0;
+
+// ===== ผู้เล่น (หอย) =====
+const player = {
+  x: 80,
+  y: 330,
+  w: 40,
+  h: 30,
+  vy: 0,
+  jumpCount: 0
+};
+
+// ===== ศัตรู =====
+const skull = {
+  x: 800,
+  y: 330,
+  w: 30,
+  h: 30,
+  speed: 4
+};
+
+// ===== คีย์บอร์ด =====
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" && player.jumpCount < 2 && !gameOver) {
+    player.vy = -12;
+    player.jumpCount++;
+  }
+
+  if (e.code === "KeyR" && gameOver) {
+    resetGame();
+  }
+});
+
+// ===== รีเซ็ตเกม =====
+function resetGame() {
+  lives = 3;
+  score = 0;
+  skull.speed = 4;
+  skull.x = 800;
+  player.y = 330;
+  player.vy = 0;
+  player.jumpCount = 0;
+  groundX = 0;
+  cloudX = 0;
+  gameOver = false;
+}
+
+// ===== อัปเดต =====
+function update() {
+  score++;
+  speedUpTimer++;
+
+  if (speedUpTimer > 300) {
+    skull.speed += 0.5;
+    speedUpTimer = 0;
+  }
+
+  // ผู้เล่น
+  player.vy += gravity;
+  player.y += player.vy;
+  if (player.y >= 330) {
+    player.y = 330;
+    player.vy = 0;
+    player.jumpCount = 0;
+  }
+
+  // ศัตรู
+  skull.x -= skull.speed;
+  if (skull.x < -30) skull.x = 800;
+
+  // ฉากหลังเลื่อน
+  groundX -= skull.speed;
+  cloudX -= skull.speed * 0.3;
+  if (groundX <= -800) groundX = 0;
+  if (cloudX <= -800) cloudX = 0;
+
+  // ตรวจชน
+  if (
+    player.x < skull.x + skull.w &&
+    player.x + player.w > skull.x &&
+    player.y < skull.y + skull.h &&
+    player.y + player.h > skull.y
+  ) {
+    lives--;
+    skull.x = 800;
+    if (lives <= 0) gameOver = true;
+  }
+}
+
+// ===== วาดหอย =====
+function drawSnail(x, y) {
+  ctx.fillStyle = "#ffb703";
+  ctx.beginPath();
+  ctx.arc(x + 20, y + 15, 15, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fb8500";
+  ctx.fillRect(x, y + 15, 35, 15);
+
+  ctx.fillStyle = "black";
+  ctx.fillRect(x + 5, y + 5, 3, 3);
+  ctx.fillRect(x + 12, y + 5, 3, 3);
+}
+
+// ===== วาดฉากหลัง =====
+function drawBackground() {
+  // เมฆ
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(cloudX + 100, 80, 20, 0, Math.PI * 2);
+  ctx.arc(cloudX + 120, 70, 25, 0, Math.PI * 2);
+  ctx.arc(cloudX + 150, 80, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(cloudX + 500, 60, 20, 0, Math.PI * 2);
+  ctx.arc(cloudX + 520, 50, 25, 0, Math.PI * 2);
+  ctx.arc(cloudX + 550, 60, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  // พื้น
+  ctx.fillStyle = "#90db6d";
+  ctx.fillRect(groundX, 360, 800, 40);
+  ctx.fillRect(groundX + 800, 360, 800, 40);
+}
+
+// ===== วาดทั้งหมด =====
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawBackground();
+  drawSnail(player.x, player.y);
+
+  ctx.fillStyle = "red";
+  ctx.fillRect(skull.x, skull.y, skull.w, skull.h);
+
+  ctx.fillStyle = "black";
+  ctx.font = "18px sans-serif";
+  ctx.fillText("คะแนน: " + score, 20, 30);
+  ctx.fillText("ชีวิต: ❤️".repeat(lives), 20, 55);
+
+  if (gameOver) {
+    ctx.font = "40px sans-serif";
+    ctx.fillText("GAME OVER", 260, 200);
+    ctx.font = "20px sans-serif";
+    ctx.fillText("กด R เพื่อเริ่มใหม่", 300, 240);
+  }
+}
+
+// ===== ลูป =====
+function gameLoop() {
+  if (!gameOver) update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>

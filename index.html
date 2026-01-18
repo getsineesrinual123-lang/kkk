@@ -2,198 +2,191 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>เทสเกม</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Snail Run 🐚</title>
 
 <style>
-  body {
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background: #eee;
-  }
-  canvas {
-    background: #caffbf;
-    border-radius: 16px;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #87ceeb;
+  touch-action: none;
+  font-family: sans-serif;
+}
+
+canvas {
+  display: block;
+  background: linear-gradient(#87ceeb, #e0f6ff);
+}
+
+/* ปุ่มมือถือ */
+#jumpBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  font-size: 20px;
+  background: orange;
+  color: white;
+  border: none;
+  z-index: 10;
+}
 </style>
 </head>
-<body>
 
-<canvas id="game" width="800" height="400"></canvas>
+<body>
+<canvas id="game"></canvas>
+<button id="jumpBtn">JUMP</button>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-// ===== ตัวแปรหลัก =====
-const gravity = 0.8;
-let gameOver = false;
-let score = 0;
-let lives = 3;
-let speedUpTimer = 0;
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
 
-// ===== ฉากหลัง =====
-let groundX = 0;
-let cloudX = 0;
-
-// ===== ผู้เล่น (หอย) =====
+/* ตัวผู้เล่น (หอย) */
 const player = {
   x: 80,
-  y: 330,
-  w: 40,
-  h: 30,
+  y: canvas.height - 120,
+  r: 25,
   vy: 0,
-  jumpCount: 0
+  jumpPower: -16,
+  onGround: true
 };
 
-// ===== ศัตรู =====
-const skull = {
-  x: 800,
-  y: 330,
-  w: 30,
-  h: 30,
-  speed: 4
-};
+let gravity = 0.8;
+let ground = canvas.height - 80;
 
-// ===== คีย์บอร์ด =====
-document.addEventListener("keydown", e => {
-  if (e.code === "Space" && player.jumpCount < 2 && !gameOver) {
-    player.vy = -12;
-    player.jumpCount++;
-  }
+/* เกม */
+let obstacles = [];
+let speed = 5;
+let score = 0;
+let lives = 3;
+let frame = 0;
+let gameOver = false;
 
-  if (e.code === "KeyR" && gameOver) {
-    resetGame();
-  }
-});
-
-// ===== รีเซ็ตเกม =====
-function resetGame() {
-  lives = 3;
-  score = 0;
-  skull.speed = 4;
-  skull.x = 800;
-  player.y = 330;
-  player.vy = 0;
-  player.jumpCount = 0;
-  groundX = 0;
-  cloudX = 0;
-  gameOver = false;
-}
-
-// ===== อัปเดต =====
-function update() {
-  score++;
-  speedUpTimer++;
-
-  if (speedUpTimer > 300) {
-    skull.speed += 0.5;
-    speedUpTimer = 0;
-  }
-
-  // ผู้เล่น
-  player.vy += gravity;
-  player.y += player.vy;
-  if (player.y >= 330) {
-    player.y = 330;
-    player.vy = 0;
-    player.jumpCount = 0;
-  }
-
-  // ศัตรู
-  skull.x -= skull.speed;
-  if (skull.x < -30) skull.x = 800;
-
-  // ฉากหลังเลื่อน
-  groundX -= skull.speed;
-  cloudX -= skull.speed * 0.3;
-  if (groundX <= -800) groundX = 0;
-  if (cloudX <= -800) cloudX = 0;
-
-  // ตรวจชน
-  if (
-    player.x < skull.x + skull.w &&
-    player.x + player.w > skull.x &&
-    player.y < skull.y + skull.h &&
-    player.y + player.h > skull.y
-  ) {
-    lives--;
-    skull.x = 800;
-    if (lives <= 0) gameOver = true;
-  }
-}
-
-// ===== วาดหอย =====
-function drawSnail(x, y) {
-  ctx.fillStyle = "#ffb703";
+/* วาดหอยการ์ตูน */
+function drawSnail() {
+  ctx.fillStyle = "#ffcc99";
   ctx.beginPath();
-  ctx.arc(x + 20, y + 15, 15, 0, Math.PI * 2);
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#fb8500";
-  ctx.fillRect(x, y + 15, 35, 15);
-
-  ctx.fillStyle = "black";
-  ctx.fillRect(x + 5, y + 5, 3, 3);
-  ctx.fillRect(x + 12, y + 5, 3, 3);
+  ctx.fillStyle = "#cc9966";
+  ctx.beginPath();
+  ctx.arc(player.x - 5, player.y, 12, 0, Math.PI * 2);
+  ctx.fill();
 }
 
-// ===== วาดฉากหลัง =====
-function drawBackground() {
-  // เมฆ
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.arc(cloudX + 100, 80, 20, 0, Math.PI * 2);
-  ctx.arc(cloudX + 120, 70, 25, 0, Math.PI * 2);
-  ctx.arc(cloudX + 150, 80, 20, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(cloudX + 500, 60, 20, 0, Math.PI * 2);
-  ctx.arc(cloudX + 520, 50, 25, 0, Math.PI * 2);
-  ctx.arc(cloudX + 550, 60, 20, 0, Math.PI * 2);
-  ctx.fill();
-
-  // พื้น
-  ctx.fillStyle = "#90db6d";
-  ctx.fillRect(groundX, 360, 800, 40);
-  ctx.fillRect(groundX + 800, 360, 800, 40);
+/* กระโดด */
+function jump() {
+  if (player.onGround && !gameOver) {
+    player.vy = player.jumpPower;
+    player.onGround = false;
+  }
 }
 
-// ===== วาดทั้งหมด =====
+/* สิ่งกีดขวาง */
+function spawnObstacle() {
+  obstacles.push({
+    x: canvas.width,
+    y: ground,
+    w: 40,
+    h: 40
+  });
+}
+
+/* วาด */
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  drawBackground();
-  drawSnail(player.x, player.y);
+  /* พื้น */
+  ctx.fillStyle = "#4caf50";
+  ctx.fillRect(0, ground, canvas.width, 80);
 
+  drawSnail();
+
+  /* สิ่งกีดขวาง */
   ctx.fillStyle = "red";
-  ctx.fillRect(skull.x, skull.y, skull.w, skull.h);
+  obstacles.forEach(o => {
+    ctx.fillRect(o.x, o.y - o.h, o.w, o.h);
+  });
 
+  /* HUD */
   ctx.fillStyle = "black";
-  ctx.font = "18px sans-serif";
+  ctx.font = "20px sans-serif";
   ctx.fillText("คะแนน: " + score, 20, 30);
-  ctx.fillText("ชีวิต: ❤️".repeat(lives), 20, 55);
+  ctx.fillText("ชีวิต: ❤️ x " + lives, 20, 60);
 
   if (gameOver) {
     ctx.font = "40px sans-serif";
-    ctx.fillText("GAME OVER", 260, 200);
-    ctx.font = "20px sans-serif";
-    ctx.fillText("กด R เพื่อเริ่มใหม่", 300, 240);
+    ctx.fillText("GAME OVER", canvas.width/2 - 120, canvas.height/2);
   }
 }
 
-// ===== ลูป =====
-function gameLoop() {
-  if (!gameOver) update();
-  draw();
-  requestAnimationFrame(gameLoop);
+/* อัปเดต */
+function update() {
+  if (gameOver) return;
+
+  frame++;
+  score++;
+
+  /* เร็วขึ้นเรื่อยๆ */
+  if (frame % 300 === 0) speed += 1;
+
+  /* ผู้เล่น */
+  player.vy += gravity;
+  player.y += player.vy;
+
+  if (player.y >= ground - player.r) {
+    player.y = ground - player.r;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  /* สิ่งกีดขวาง */
+  if (frame % 120 === 0) spawnObstacle();
+
+  obstacles.forEach(o => o.x -= speed);
+
+  /* ตรวจชน */
+  obstacles = obstacles.filter(o => {
+    if (
+      player.x + player.r > o.x &&
+      player.x - player.r < o.x + o.w &&
+      player.y + player.r > o.y - o.h
+    ) {
+      lives--;
+      if (lives <= 0) gameOver = true;
+      return false;
+    }
+    return o.x + o.w > 0;
+  });
 }
 
-gameLoop();
-</script>
+/* ลูปเกม */
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
 
+/* คีย์บอร์ด */
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") jump();
+});
+
+/* มือถือ */
+document.getElementById("jumpBtn").addEventListener("touchstart", jump);
+</script>
 </body>
 </html>
